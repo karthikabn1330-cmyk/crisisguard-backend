@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 dotenv.config();
 
@@ -12,7 +12,7 @@ app.use(cors());
 app.use(express.json());
 
 // Initialize Google Gemini AI
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // Connect to MongoDB Database
 /* 
@@ -74,12 +74,9 @@ app.post('/api/sos', async (req, res) => {
                       Then provide a 1-sentence action-plan for the responder.
                       Format: [SEVERITY] - [ACTION-PLAN]`;
                       
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt
-      });
-      
-      const aiText = response.text;
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const result = await model.generateContent(prompt);
+      const aiText = result.response.text();
       if(aiText.includes('CRITICAL')) priorityLevel = 'CRITICAL';
       else if(aiText.includes('MEDIUM')) priorityLevel = 'MEDIUM';
       
