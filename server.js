@@ -10,6 +10,7 @@ dotenv.config();
 const app = express();
 app.use(cors());
 app.use(express.json());
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'karthikabn1330@gmail.com';
 
 // Initialize Google Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -23,12 +24,10 @@ mongoose.connect(process.env.MONGO_URI, {
 */
 
 // --- EMAIL TRANSPORTER ---
-/*
 const transporter = nodemailer.createTransport({
   service: 'gmail',
-  auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
+  auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
 });
-*/
 
 // --- ROUTES ---
 
@@ -38,17 +37,19 @@ app.post('/api/auth/register', async (req, res) => {
   
   try {
     if (role === 'authority') {
-      // Send approval email to developer!
-      console.log(`Simulating sending email to karthikabn1330@gmail.com for Authority: ${orgName}`);
-      
-      /* 
+      if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+        return res.status(500).json({
+          error: 'Email service is not configured. Set EMAIL_USER and EMAIL_PASS in backend/.env',
+        });
+      }
+
       await transporter.sendMail({
-        from: '"CrisisGuard System" <no-reply@crisisguard.com>',
-        to: 'karthikabn1330@gmail.com',
+        from: `"CrisisGuard System" <${process.env.EMAIL_USER}>`,
+        to: ADMIN_EMAIL,
         subject: `New Authority Registration Request: ${orgName}`,
-        text: `Admin approval required for ${name} requesting to register ${orgName}.`
+        text: `Admin approval required for ${name} (${email}) requesting to register ${orgName}.`,
       });
-      */
+
       return res.status(200).json({ message: 'Authority registration sent for Administrator approval via Email.' });
     }
     
@@ -101,4 +102,17 @@ app.get('/', (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Backend Active on Port ${PORT}`));
+app.listen(PORT, async () => {
+  console.log(`Backend Active on Port ${PORT}`);
+
+  if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+    try {
+      await transporter.verify();
+      console.log('Email transporter is ready.');
+    } catch (error) {
+      console.error('Email transporter verification failed:', error.message);
+    }
+  } else {
+    console.warn('Email transporter not configured. Missing EMAIL_USER or EMAIL_PASS.');
+  }
+});
